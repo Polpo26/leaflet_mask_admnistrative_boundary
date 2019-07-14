@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>A simple map</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@5/turf.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    <style>
+        body {
+        margin: 0;
+        padding: 0;
+        }
+        #map {
+        position: absolute;
+        top: 100px;
+        bottom: 0;
+        width: 100%;
+        }
+        div#search {
+          background-color: white;
+          bottom: 40px;
+          left: 40px;
+          width: auto;
+          height: auto;
+          padding: 10px;
+        }
+        div#search input {
+          width: 200px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="search">
+      <input type="text" name="addr" value="" id="searchInput" size="10" />
+      <button id="searchBtn" type="button" >Search</button>
+    </div>
+    <div id="map"></div>
+
+<script>
+    
+       function draw_counties(value, map) {
+        var counties = $.ajax({
+            url: "https://nominatim.openstreetmap.org/search.php?polygon_geojson=1&format=geocodejson&limit=1&q=" + value,
+            dataType: "json",
+            success: console.log("County data successfully loaded."),
+            error: function(xhr) {
+                alert(xhr.statusText)
+            }
+        });
+
+      $.when(counties).done(function() {
+          // Add requested external GeoJSON to map
+          var kyCounties = L.geoJSON(counties.responseJSON);
+          var mask = L.geoJson(turf.mask(counties.responseJSON),
+                              {"fillOpacity": 1, color: '#2e0afc', weight: 5}
+                              ).addTo(map);
+          var bounds = kyCounties.getBounds();
+          map.fitBounds(bounds);
+      });
+    }
+    
+    $(document).ready(function() {
+        var map = L.map("map").setView([37.857507, -85.632935], 2);
+        var basemap = L.tileLayer('http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+        basemap.addTo(map);
+
+        var layer = draw_counties("firenze", map);
+
+        $("#searchBtn").click(function() {
+            query = $("#searchInput").val();
+            if (query) {
+            map.eachLayer(function (layer) {
+            	map.removeLayer(layer);
+        		});   
+                draw_counties(query, map);
+                basemap.addTo(map);
+            }    
+        });
+        
+    });
+</script>
+</body>
+
+</html>
